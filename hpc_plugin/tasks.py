@@ -22,6 +22,13 @@ from cloudify.exceptions import NonRecoverableError
 from hpc_plugin.ssh import SshClient
 from hpc_plugin import slurm
 
+def load_scheduler_module(scheduler_type):
+    scheduler = 'hpc_plugin.'
+    scheduler += "torque" if scheduler_type == "TORQUE" else "slurm"
+
+    _scheduler = __import__(scheduler)
+    _scheduler = sys.modules[scheduler]
+    return _scheduler
 
 @operation
 def login_connection(config, simulate, **kwargs):  # pylint: disable=W0613
@@ -283,11 +290,12 @@ def send_job(job_options, **kwargs):  # pylint: disable=W0613
                            credentials['password'])
 
         # TODO(emepetres): use workload manager type
-        is_submitted = slurm.submit_job(client,
-                                        name,
-                                        job_options,
-                                        is_singularity,
-                                        ctx.logger)
+        scheduler    = load_scheduler_module(job_options["type"])
+        is_submitted = scheduler.submit_job(client,
+                                            name,
+                                            job_options,
+                                            is_singularity,
+                                            ctx.logger)
         client.close_connection()
     else:
         ctx.logger.warning('Instance ' + ctx.instance.id + ' simulated')
@@ -322,11 +330,12 @@ def clean_job_aux_files(job_options, avoid, **kwargs):  # pylint: disable=W0613
                            credentials['password'])
 
         # TODO(emepetres): use workload manager type
-        is_clean = slurm.clean_job_aux_files(client,
-                                             name,
-                                             job_options,
-                                             is_singularity,
-                                             ctx.logger)
+        scheduler = load_scheduler_module(job_options["type"])
+        is_clean  = scheduler.clean_job_aux_files(client,
+                                                  name,
+                                                  job_options,
+                                                  is_singularity,
+                                                  ctx.logger)
 
         client.close_connection()
     else:
@@ -356,11 +365,12 @@ def stop_job(job_options, **kwargs):  # pylint: disable=W0613
                            credentials['password'])
 
         # TODO(emepetres): use workload manager type
-        is_stopped = slurm.stop_job(client,
-                                    name,
-                                    job_options,
-                                    is_singularity,
-                                    ctx.logger)
+        scheduler  = load_scheduler_module(job_options["type"])
+        is_stopped = scheduler.stop_job(client,
+                                        name,
+                                        job_options,
+                                        is_singularity,
+                                        ctx.logger)
 
         client.close_connection()
     else:
